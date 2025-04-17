@@ -42,7 +42,7 @@ const app = express();
 const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
     cors: {
-        origin: 'https://hr-management-sys-app.netlify.app/', // Allow this origin
+        origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
         methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
         credentials: true // Allow credentials (cookies, authorization headers)
     }
