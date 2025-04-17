@@ -42,7 +42,7 @@ const app = express();
 const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:5173', // Allow this origin
+        origin: 'https://hrmanagementapp-production.up.railway.app', // Allow this origin
         methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
         credentials: true // Allow credentials (cookies, authorization headers)
     }
@@ -51,7 +51,7 @@ export { io };
 // Middleware setup
 app.use(cookieParser());
 app.use(cors({
-    origin: 'http://localhost:5173', // Allow this origin
+    origin: 'https://hrmanagementapp-production.up.railway.app', // Allow this origin
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
     credentials: true // Allow credentials (cookies, authorization headers)
 }));
