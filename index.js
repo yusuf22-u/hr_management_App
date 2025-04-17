@@ -41,31 +41,31 @@ import { centerformRouter } from './routers/centerForm.js';
 const app = express();
 const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
-    cors: {
-        origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
-        methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
-        credentials: true // Allow credentials (cookies, authorization headers)
-    }
+    // cors: {
+    //     origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
+    //     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+    //     credentials: true // Allow credentials (cookies, authorization headers)
+    // }
 });
 export { io }; 
 // Middleware setup
 app.use(cookieParser());
-const allowedOrigins = [
-    'https://hr-management-sys-app.netlify.app',
-    'https://hrmanagementapp-production.up.railway.app'
-];
+// const allowedOrigins = [
+//     'https://hr-management-sys-app.netlify.app',
+//     'https://hrmanagementapp-production.up.railway.app'
+// ];
 
-app.options('*', cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }));
+// app.options('*', cors({
+//     origin: function (origin, callback) {
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error('Not allowed by CORS'));
+//       }
+//     },
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     credentials: true
+//   }));
 
 
 app.use(express.json());
