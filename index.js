@@ -76,16 +76,16 @@ app.use("/uploads/certificate", express.static("uploads/certificate"));
 
 createEmployeeTable();
 createUserTable();
-// createnotificationsTable();
-// createStaffEvaluationTable(); 
-// createStudentTable(); // Uncomment if needed
-// createStudentScoresTable()
-// createItemsTable()
-// createStockTable()
-// createitem_allocationsTable()
-// createPayrollTable()
-// createMessageTable()
-// createCertificatesTable()
+createnotificationsTable();
+createStaffEvaluationTable(); 
+createStudentTable(); // Uncomment if needed
+createStudentScoresTable()
+createItemsTable()
+createStockTable()
+createitem_allocationsTable()
+createPayrollTable()
+createMessageTable()
+createCertificatesTable()
 // createEmailTable()
 // createCenterFormTable()
 
