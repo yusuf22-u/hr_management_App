@@ -16,7 +16,7 @@ export const createPayrollTable = () => {
         basic_salary + resident_allowance + COALESCE(responsibility_allowance, 0) + transport_allowance 
         - (income_tax + social_security_contribution)
     ) STORED,
-    salary_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    salary_date DATE NOT NULL DEFAULT (CURRENT_DATE),
     FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 );
 
