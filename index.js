@@ -87,8 +87,8 @@ createLeaveTable();
 createPayrollTable()
 createMessageTable()
 createCertificatesTable()
-// createEmailTable()
-// createCenterFormTable()
+createEmailTable()
+createCenterFormTable()
 
 // Set up routes
 app.use('/v1', userRouter);
