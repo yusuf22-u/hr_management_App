@@ -50,23 +50,10 @@ const io = new Server(server, {
 export { io }; 
 // Middleware setup
 app.use(cookieParser());
-const allowedOrigins = [
-    'https://hr-management-sys-app.netlify.app',
-    'https://hrmanagementapp-production.up.railway.app'
-];
-
-app.options('*', cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }));
-
+app.use(cors({
+  origin: 'https://hr-management-sys-app.netlify.app',
+  credentials: true,
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form data
