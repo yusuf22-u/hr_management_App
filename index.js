@@ -115,6 +115,6 @@ io.on('connection', (socket) => {
 });
 
 // Start the server
-server.listen(4000, () => {
-    console.log('Server running at http://localhost:4000');
+server.listen(process.env.PORT, () => {
+    console.log(`Server running at http://localhost:${process.env.PORT}`);
 });
