@@ -1,17 +1,15 @@
 import mysql from 'mysql2';
 import dotenv from 'dotenv'
-
+import multer from 'multer';
 dotenv.config()
-// const DB_url=`mysql://root:iFNOCJPRXKZTkJXccHcTuZNhHsdlVDgW@mysql.railway.internal:3306/railway`
+
 
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE
-
-})
-
+});
 
 db.connect((err) => {
     if (err) {
