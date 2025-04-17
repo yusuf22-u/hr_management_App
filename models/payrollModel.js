@@ -8,7 +8,7 @@ export const createPayrollTable = () => {
     employee_id INT NOT NULL,
     basic_salary DECIMAL(10, 2) NOT NULL,
     resident_allowance DECIMAL(10, 2) DEFAULT 0,
-    responsibility_allowance DECIMAL(10, 2) DEFAULT NULL, -- Only for Executive Director
+    responsibility_allowance DECIMAL(10, 2) DEFAULT NULL, 
     transport_allowance DECIMAL(10, 2) DEFAULT 0,
     income_tax DECIMAL(10, 2) NOT NULL,
     social_security_contribution DECIMAL(10, 2) NOT NULL,
