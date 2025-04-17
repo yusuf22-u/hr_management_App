@@ -9,7 +9,7 @@ export const createMessageTable = () => {
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES employees(employee_id),  -- Corrected foreign key
+    FOREIGN KEY (user_id) REFERENCES employees(employee_id),  
     FOREIGN KEY (leave_id) REFERENCES leaves(id)
 );
 
