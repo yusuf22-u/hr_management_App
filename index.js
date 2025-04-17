@@ -51,21 +51,21 @@ export { io };
 // Middleware setup
 app.use(cookieParser());
 const allowedOrigins = [
-    'https://hr-management-sys-app.netlify.app/',
+    'https://hr-management-sys-app.netlify.app',
     'https://hrmanagementapp-production.up.railway.app'
 ];
 
-app.use(cors({
+app.options('*', cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
-}));
+  }));
 
 
 app.use(express.json());
