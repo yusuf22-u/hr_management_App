@@ -74,7 +74,7 @@ app.use("/uploads/certificate", express.static("uploads/certificate"));
 // createLeaveTable();
 
 // createUserTable();
-// createEmployeeTable();
+createEmployeeTable();
 // createnotificationsTable();
 // createStaffEvaluationTable(); 
 // createStudentTable(); // Uncomment if needed
