@@ -115,76 +115,71 @@ export const registerUser = (req, res) => {
   });
 };
 
-export const loginUser = (req, res) => {
-  const { email, password } = req.body;
+export const loginUser = async (req, res) => {
+    const { email, password } = req.body;
 
-  // Check for missing fields
-  if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'All fields are required' });
-  }
+    if (!email || !password) {
+        return res.status(400).json({ success: false, error: 'All fields are required' });
+    }
 
-  const sql = `SELECT * FROM users WHERE email = ?`;
-  db.query(sql, [email], async (err, results) => {
-      if (err) {
-          return res.status(500).json({ success: false, error: 'Database query error: ' + err });
-      }
+    try {
+        // Fetch user by email
+        const [results] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
 
-      if (results.length === 0) {
-          return res.status(401).json({ success: false, error: 'Invalid credentials' });
-      }
+        if (results.length === 0) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
 
-      const user = results[0];
+        const user = results[0];
 
-      // Check the password
-      const isPasswordMatch = await bcrypt.compare(password, user.password);
-      if (!isPasswordMatch) {
-          return res.status(401).json({ success: false, error: 'Invalid credentials' });
-      }
+        // Compare password
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
 
-      // Update last login time
-      const loginTime = new Date();
-      const updateLoginSql = 'UPDATE users SET last_login = ? WHERE id = ?';
-      db.query(updateLoginSql, [loginTime, user.id], (updateErr) => {
-          if (updateErr) {
-              console.error('Failed to update login time:', updateErr);
-              // Continue even if the login time update fails
-          }
+        // Update last login
+        const loginTime = new Date();
+        await db.query('UPDATE users SET last_login = ? WHERE id = ?', [loginTime, user.id]);
 
-          // Generate a JWT token with employee_id and profile_pic in the payload
-          const token = jwt.sign(
-              {
-                  userId: user.id,
-                  employee_id: user.employee_id,
-                  role: user.role,
-                  profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null, // Send full path
-                  username: user.username
-              },
-              process.env.JWT_SECRET,
-              { expiresIn: '1h' }
-          );
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                userId: user.id,
+                employee_id: user.employee_id,
+                role: user.role,
+                profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+                username: user.username,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '2h' }
+        );
 
-          // Send token in a secure cookie
-          res.cookie('token', token, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'Strict',
-          });
+        // Set cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+        });
 
-          res.status(200).json({
-              success: true,
-              message: 'Login successful',
-              token,
-              user: {
-                  id: user.id,
-                  employee_id: user.employee_id,
-                  role: user.role,
-                  profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null, // Full URL for frontend
-                  username: user.username,
-                  email: user.email
-              }
-          });
-      });
-  });
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            token,
+            user: {
+                id: user.id,
+                employee_id: user.employee_id,
+                role: user.role,
+                profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+                username: user.username,
+                email: user.email,
+            },
+        });
+
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
 };
 
 export const logoutUser = (req, res) => {
