@@ -1,89 +1,107 @@
-import db from '../config/db.js'; // Adjust the path according to your project structure
-export const createEmployee = (req, res) => {
-  const { employee_id, full_name, email, address, phone_number, position, department, date_of_birth, date_of_admission } = req.body;
+import db from '../config/db.js';
+export const createEmployee = async (req, res) => {
+  const {
+    employee_id,
+    full_name,
+    email,
+    address,
+    phone_number,
+    position,
+    department,
+    date_of_birth,
+    date_of_admission
+  } = req.body;
   const profile_pic = req.file ? req.file.filename : null;
 
-  // Check if employee_id or email already exists
-  const checkDuplicateQuery = `
-    SELECT * FROM employees WHERE employee_id = ? OR email = ?
-  `;
+  try {
+    const [existing] = await db.query(
+      'SELECT * FROM employees WHERE employee_id = ? OR email = ?',
+      [employee_id, email]
+    );
 
-  db.query(checkDuplicateQuery, [employee_id, email], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database query error: ' + err });
-    }
-
-    // If a record with the same employee_id or email is found, return an error
-    if (results.length > 0) {
-      const existing = results[0];
-      if (existing.employee_id === parseInt(employee_id)) {
+    if (existing.length > 0) {
+      const found = existing[0];
+      if (found.employee_id === parseInt(employee_id)) {
         return res.status(400).json({ error: 'Employee ID already exists' });
-      } else if (existing.email === email) {
+      }
+      if (found.email === email) {
         return res.status(400).json({ error: 'Email already exists' });
       }
     }
 
-    // Proceed with the insertion if no duplicates
-    const insertEmployeeQuery = `
-      INSERT INTO employees (employee_id, full_name, email, address, phone_number, profile_pic, position, department, date_of_birth, date_of_admission)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    await db.query(
+      `INSERT INTO employees 
+        (employee_id, full_name, email, address, phone_number, profile_pic, position, department, date_of_birth, date_of_admission)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        employee_id,
+        full_name,
+        email,
+        address,
+        phone_number,
+        profile_pic,
+        position,
+        department,
+        date_of_birth,
+        date_of_admission
+      ]
+    );
 
-    db.query(insertEmployeeQuery, [employee_id, full_name, email, address, phone_number, profile_pic, position, department,  date_of_birth, date_of_admission], (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database query error: ' + err });
-      }
-      res.json({ message: 'Employee created successfully' });
-    });
-  });
+    res.status(201).json({ message: 'Employee created successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
 };
 
-export const getEmployeeById = (req, res) => {
+export const getEmployeeById = async (req, res) => {
   const { employee_id } = req.params;
 
-  const query = 'SELECT * FROM employees WHERE employee_id = ?';
-  db.query(query, [employee_id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: 'Error fetching employee data', error: err });
-    }
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM employees WHERE employee_id = ?',
+      [employee_id]
+    );
 
-    if (result.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    return res.status(200).json(result[0]); // Return the employee data
-  });
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching employee', error: err.message });
+  }
 };
-export const updateEmployee = (req, res) => {
+
+export const updateEmployee = async (req, res) => {
   const { employee_id } = req.params;
-  const { full_name, email, address, phone_number, position, department, date_of_birth, date_of_admission } = req.body;
+  const {
+    full_name,
+    email,
+    address,
+    phone_number,
+    position,
+    department,
+    date_of_birth,
+    date_of_admission
+  } = req.body;
 
-  // Query to fetch existing profile picture
-  const getExistingProfilePicQuery = 'SELECT profile_pic FROM employees WHERE employee_id = ?';
+  try {
+    const [existing] = await db.query(
+      'SELECT profile_pic FROM employees WHERE employee_id = ?',
+      [employee_id]
+    );
 
-  db.query(getExistingProfilePicQuery, [employee_id], (err, results) => {
-    if (err) {
-      console.error('Database query error while fetching existing profile pic:', err);
-      return res.status(500).json({ status: false, error: 'Database query error: ' + err });
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
     }
 
-    if (results.length === 0) {
-      return res.status(404).json({ status: false, error: 'Employee not found' });
-    }
-
-    const existingProfilePic = results[0].profile_pic;
-    console.log('Existing profile pic:', existingProfilePic);
-
-    // Determine the profile_pic value
-    let profile_pic = existingProfilePic; // Default to existing profile pic
+    let profile_pic = existing[0].profile_pic;
     if (req.file) {
-      profile_pic = req.file.filename; // Update with new file if provided
-      console.log('New profile pic:', profile_pic);
+      profile_pic = req.file.filename;
     }
 
-    // Query to update employee information
-    const updateQuery = `
-      UPDATE employees SET 
+    const [result] = await db.query(
+      `UPDATE employees SET 
         full_name = ?, 
         email = ?, 
         address = ?, 
@@ -91,81 +109,84 @@ export const updateEmployee = (req, res) => {
         position = ?, 
         department = ?, 
         date_of_birth = ?, 
-        date_of_admission = ?,
-        profile_pic = ?  -- Include profile_pic in the update query
-      WHERE employee_id = ?
-    `;
+        date_of_admission = ?, 
+        profile_pic = ?
+      WHERE employee_id = ?`,
+      [
+        full_name,
+        email,
+        address,
+        phone_number,
+        position,
+        department,
+        date_of_birth,
+        date_of_admission,
+        profile_pic,
+        employee_id
+      ]
+    );
 
-    db.query(updateQuery, [full_name, email, address, phone_number, position, department, date_of_birth, date_of_admission, profile_pic, employee_id], (err, result) => {
-      if (err) {
-        return res.status(500).json({ message: 'Internal Server Error', error: err.message });
-      }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Update failed: Employee not found' });
+    }
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: 'Employee not found' });
-      }
-
-      res.status(200).json({ message: 'Employee updated successfully' });
-    });
-  });
+    res.json({ message: 'Employee updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Update error: ' + err.message });
+  }
 };
 
-export const deleteEmployee = (req, res) => {
+export const deleteEmployee = async (req, res) => {
   const { employee_id } = req.params;
 
-  const sql = 'DELETE FROM employees WHERE employee_id = ?';
+  try {
+    const [result] = await db.query(
+      'DELETE FROM employees WHERE employee_id = ?',
+      [employee_id]
+    );
 
-  db.query(sql, [employee_id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ status: false, error: 'Query error: ' + err });
-    }
     if (result.affectedRows === 0) {
-      return res.status(404).json({ status: false, error: 'No record found' });
+      return res.status(404).json({ error: 'No employee found to delete' });
     }
-    return res.json({ status: true, message: 'Employee successfully deleted' });
-  });
+
+    res.json({ message: 'Employee successfully deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete error: ' + err.message });
+  }
 };
 
-
-
-
-// Controller method to get all employees
-export const getAllEmployees = (req, res) => {
+export const getAllEmployees = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
 
-  const countQuery = 'SELECT COUNT(*) AS totalCount FROM employees';
-  const employeeQuery = 'SELECT * FROM employees LIMIT ? OFFSET ?';
-  const query = 'SELECT * FROM employees';
-  db.query(countQuery, (err, countResult) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database count query error: ' + err });
-    }
-    const totalCount = countResult[0].totalCount;
-    db.query(employeeQuery, [limit, offset], (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database query error: ' + err });
-      }
-      res.json({
-        totalCount,
-        employees: results
-      });
-    });
-});
-};
-// Controller method to get employee distribution by department
-export const getEmployeeDistribution = (req, res) => {
-  const query = `
-    SELECT department, COUNT(*) AS count
-    FROM employees
-    GROUP BY department
-  `;
+  try {
+    const [[{ totalCount }]] = await db.query('SELECT COUNT(*) AS totalCount FROM employees');
 
-  db.query(query, (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database query error: ' + err });
-    }
+    const [employees] = await db.query(
+      'SELECT * FROM employees LIMIT ? OFFSET ?',
+      [limit, offset]
+    );
+
+    res.json({
+      totalCount,
+      employees
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Fetch error: ' + err.message });
+  }
+};
+
+export const getEmployeeDistribution = async (req, res) => {
+  try {
+    const [results] = await db.query(
+      `SELECT department, COUNT(*) AS count
+       FROM employees
+       GROUP BY department`
+    );
+
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Distribution query error: ' + err.message });
+  }
 };

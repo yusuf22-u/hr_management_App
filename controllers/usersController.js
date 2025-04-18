@@ -1,386 +1,297 @@
 import bcrypt from 'bcrypt';
 import db from '../config/db.js';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 import multer from 'multer';
-dotenv.config()
+dotenv.config();
 
-// Add this in your environment or hardcode it, but it's safer in an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'yourSecretKey';
 
-// Multer configuration for file uploads
+// Multer setup
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, './uploads/userpic'); // Ensure this folder exists
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
+  destination: (req, file, cb) => cb(null, './uploads/userpic'),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 
 const upload = multer({
-    storage,
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only JPEG, PNG, and JPG formats are allowed'));
-        }
-    }
-}).single('profile'); // Handling single file upload
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    allowedTypes.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPEG, PNG, and JPG formats are allowed'));
+  }
+}).single('profile');
 
-export const registerUser = (req, res) => {
-  upload(req, res, (uploadErr) => {
-    if (uploadErr) {
-      return res.status(400).json({ success: false, error: uploadErr.message });
-    }
+export const registerUser = async (req, res) => {
+  upload(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ success: false, error: uploadErr.message });
 
     const { employee_id, username, email, password, role } = req.body;
-    // const profilePic = req.file ? req.file.filename : null;
-    const  profilePic = req.file ? req.file.filename : 'profile.png';
- // Save the file name if uploaded
+    const profilePic = req.file ? req.file.filename : 'profile.png';
 
-    // Check for missing fields
     if (!employee_id || !username || !email || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     try {
-      // Step 1: Verify if the employee exists
-      const checkEmployeeSql = `SELECT * FROM employees WHERE employee_id = ?`;
-      db.query(checkEmployeeSql, [employee_id], (err, employeeResults) => {
-        if (err) {
-          return res.status(500).json({ success: false, error: 'Database query error: ' + err });
-        }
+      const [employeeResults] = await db.query('SELECT * FROM employees WHERE employee_id = ?', [employee_id]);
+      if (employeeResults.length === 0) {
+        return res.status(404).json({ success: false, error: 'Employee does not exist' });
+      }
 
-        if (employeeResults.length === 0) {
-          return res.status(404).json({ success: false, error: 'Employee does not exist' });
-        }
+      const [userResults] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+      if (userResults.length > 0) {
+        return res.status(409).json({ success: false, error: 'User already exists' });
+      }
 
-        // Step 2: Check if the user already exists
-        const checkUserSql = `SELECT * FROM users WHERE email = ?`;
-        db.query(checkUserSql, [email], async (err, userResults) => {
-          if (err) {
-            return res.status(500).json({ success: false, error: 'Database query error: ' + err });
-          }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const userRole = role || 'user';
 
-          if (userResults.length > 0) {
-            return res.status(409).json({ success: false, error: 'User already exists' });
-          }
+      const [result] = await db.query(
+        'INSERT INTO users (employee_id, username, email, password, role, profile) VALUES (?, ?, ?, ?, ?, ?)',
+        [employee_id, username, email, hashedPassword, userRole, profilePic]
+      );
 
-          try {
-            // Step 3: Hash the password
-            const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash(password, saltRounds);
+      const token = jwt.sign(
+        {
+          userId: result.insertId,
+          employee_id,
+          role: userRole
+        },
+        JWT_SECRET,
+        { expiresIn: '1h' }
+      );
 
-            // Default to 'user' if no role is provided
-            const userRole = role ? role : 'user';
-
-            // Step 4: Insert the new user into the database
-            const sql = `INSERT INTO users (employee_id, username, email, password, role, profile) VALUES (?, ?, ?, ?, ?, ?)`;
-            const values = [employee_id, username, email, hashedPassword, userRole, profilePic];
-
-            db.query(sql, values, (err, result) => {
-              if (err) {
-                return res.status(500).json({ success: false, error: 'Database insertion error: ' + err });
-              }
-
-              // Step 5: Generate JWT token for the user with employee_id in the payload
-              const token = jwt.sign(
-                { 
-                  userId: result.insertId, 
-                  employee_id,    
-                  role: userRole 
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-              );
-
-              res.status(201).json({
-                success: true,
-                message: 'User registered successfully',
-                token,
-                profile_pic: profilePic ? `/uploads/userpic/${profilePic}` : null
-              });
-            });
-          } catch (hashError) {
-            return res.status(500).json({ success: false, error: 'Error hashing password: ' + hashError });
-          }
-        });
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        token,
+        profile_pic: `/uploads/userpic/${profilePic}`
       });
+
     } catch (error) {
-      res.status(500).json({ success: false, error: 'Server error: ' + error });
+      res.status(500).json({ success: false, error: 'Server error: ' + error.message });
     }
   });
 };
 
 export const loginUser = async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ success: false, error: 'All fields are required' });
 
-    if (!email || !password) {
-        return res.status(400).json({ success: false, error: 'All fields are required' });
-    }
+  try {
+    const [results] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (results.length === 0) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    const user = results[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+
+    const loginTime = new Date();
+    await db.query('UPDATE users SET last_login = ? WHERE id = ?', [loginTime, user.id]);
+
+    const token = jwt.sign({
+      userId: user.id,
+      employee_id: user.employee_id,
+      role: user.role,
+      profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+      username: user.username
+    }, JWT_SECRET, { expiresIn: '1h' });
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        employee_id: user.employee_id,
+        role: user.role,
+        profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+        username: user.username,
+        email: user.email
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+  }
+};
+
+export const logoutUser = async (req, res) => {
+  const userId = req.user.userId;
+  const now = new Date();
+
+  try {
+    await db.query('UPDATE users SET last_logout = ? WHERE id = ?', [now, userId]);
+  } catch (err) {
+    console.error('Failed to update logout time:', err.message);
+  }
+
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+  });
+
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+};
+
+export const getUsers = async (req, res) => {
+  const { page = 1, limit = 10, sortBy = 'id', order = 'ASC' } = req.query;
+  const offset = (page - 1) * limit;
+
+  const validSortColumns = ['id', 'username', 'email', 'role'];
+  const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'id';
+  const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+  try {
+    const [users] = await db.query(`SELECT * FROM users ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`, [parseInt(limit), parseInt(offset)]);
+
+    if (users.length === 0) return res.status(404).json({ error: "Users not found" });
+
+    res.status(200).json({
+      message: "Users retrieved successfully",
+      data: users,
+      meta: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        sortBy: sortColumn,
+        order: sortOrder,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [result] = await db.query('DELETE FROM users WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: "User not found" });
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', err: err.message });
+  }
+};
+
+export const updateUserRole = async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  const allowedRoles = ["admin", "user", "award", "manager"];
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+
+  try {
+    const [result] = await db.query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: "User not found" });
+    res.status(200).json({ message: "User role updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', err: err.message });
+  }
+};
+// Get all users' login/logout history
+export const getAllUsersHistory = async (req, res) => {
+    const sql = `
+        SELECT profile, username, last_login AS lastIn, last_logout AS lastOut
+        FROM users
+        ORDER BY last_login DESC
+    `;
 
     try {
-        // Fetch user by email
-        const [results] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-
-        if (results.length === 0) {
-            return res.status(401).json({ success: false, error: 'Invalid credentials' });
-        }
-
-        const user = results[0];
-
-        // Compare password
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
-        if (!isPasswordMatch) {
-            return res.status(401).json({ success: false, error: 'Invalid credentials' });
-        }
-
-        // Update last login
-        const loginTime = new Date();
-        await db.query('UPDATE users SET last_login = ? WHERE id = ?', [loginTime, user.id]);
-
-        // Generate JWT token
-        const token = jwt.sign(
-            {
-                userId: user.id,
-                employee_id: user.employee_id,
-                role: user.role,
-                profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
-                username: user.username,
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '2h' }
-        );
-
-        // Set cookie
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
-        });
-
-        res.status(200).json({
-            success: true,
-            message: 'Login successful',
-            token,
-            user: {
-                id: user.id,
-                employee_id: user.employee_id,
-                role: user.role,
-                profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
-                username: user.username,
-                email: user.email,
-            },
-        });
-
-    } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).json({ success: false, error: 'Server error' });
-    }
-};
-
-export const logoutUser = (req, res) => {
-    const userId = req.user.userId; // Extracted from the decoded JWT
-    console.log('User logging out:', userId);
-    const now = new Date();
-
-    // Update last logout time
-    const updateLogoutSql = 'UPDATE users SET last_logout = ? WHERE id = ?';
-    db.query(updateLogoutSql, [now, userId], (err) => {
-        if (err) {
-            console.error('Failed to update logout time:', err);
-            // Continue even if updating logout time fails
-        }
-    });
-
-    // Clear the JWT token cookie
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-    });
-
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
-};
-
-export const getUsers = (req, res) => {
-    // Get query parameters for pagination and ordering
-    const { page = 1, limit = 10, sortBy = 'id', order = 'ASC' } = req.query; // Defaults: page 1, 10 users per page, sort by id ascending
-
-    // Calculate offset for pagination
-    const offset = (page - 1) * limit;
-
-    // Ensure safe ordering
-    const validSortColumns = ['id', 'username', 'email', 'role']; // Adjust based on your `users` table columns
-    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'id'; // Default to `id` if `sortBy` is invalid
-    const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'; // Default to `ASC` if invalid
-
-    // SQL query with LIMIT and OFFSET for pagination
-    const sql = `SELECT * FROM users ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
-
-    // Execute query
-    db.query(sql, [parseInt(limit), parseInt(offset)], (err, result) => {
-        if (err) {
-            console.error('Database Error:', err); // Log detailed error
-            return res.status(500).json({ error: 'Server error', details: err.message });
-        }
-
-        if (result.length === 0) {
-            return res.status(404).json({ error: "Users not found" });
-        }
-
-        // Return users with pagination metadata
-        res.status(200).json({
-            message: "Users retrieved successfully",
-            data: result,
-            meta: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                sortBy: sortColumn,
-                order: sortOrder,
-            },
-        });
-    });
-};
-
-
-export const deleteUser = (req, res) => {
-    const { id } = req.params;
-    const sql = `DELETE FROM users WHERE id = ?`;
-    db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).json({ error: 'Server error', err });
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        res.status(200).json({ message: "User deleted successfully" });
-    });
-};
-export const updateUserRole = (req, res) => {
-    const { id } = req.params;
-    const { role } = req.body;
-
-    // Allowed roles for validation
-    const allowedRoles = ["admin", "user", "award","manager"];
-
-    // Validate role and ID
-    if (!allowedRoles.includes(role)) {
-        return res.status(400).json({ error: "Invalid role" });
-    }
-    if (!Number.isInteger(parseInt(id))) {
-        return res.status(400).json({ error: "Invalid user ID" });
-    }
-
-    // SQL query
-    const sql = `UPDATE users SET role = ? WHERE id = ?`;
-
-    // Execute query
-    db.query(sql, [role, id], (err, result) => {
-        if (err) {
-            console.error("Database error:", err); // Log the error
-            return res.status(500).json({ error: "Server error" });
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "User doesn't exist" });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "User role updated successfully",
-        });
-    });
-};
-export const getAllUsersHistory = (req, res) => {
-    const sql = `SELECT profile, username, last_login AS lastIn, last_logout AS lastOut FROM users ORDER BY last_login DESC`;
-
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('Database Error:', err); // Log detailed error
-            return res.status(500).json({ error: 'Server error', details: err.message });
-        }
+        const [results] = await db.query(sql);
 
         if (results.length === 0) {
             return res.status(404).json({ error: "No user history found" });
         }
 
-        // Return all users' login/logout history
         res.status(200).json({
             success: true,
             message: "User history retrieved successfully",
-            data: results
+            data: results,
         });
-    });
+    } catch (err) {
+        console.error("Database Error:", err);
+        res.status(500).json({ error: "Server error", details: err.message });
+    }
 };
+// Get user info by ID (using ID from token middleware)
+export const getUserById = async (req, res) => {
+    const userId = req.user?.userId;
 
-// get users by Id
-export const getUserById = (req, res) => {
-    // console.log("User object from token:", req.user); // Debugging log
-
-    const userId = req.user?.userId; // Ensure req.user exis
-    
     if (!userId) {
         return res.status(401).json({ error: "Unauthorized: No user ID found" });
     }
 
-    const sql = 'SELECT profile, username, email FROM users WHERE id = ?';
-    
-    db.query(sql, [userId], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: "Server error", details: err });
-        }
-        if (result.length === 0) {
+    const sql = `
+        SELECT profile, username, email
+        FROM users
+        WHERE id = ?
+    `;
+
+    try {
+        const [results] = await db.query(sql, [userId]);
+
+        if (results.length === 0) {
             return res.status(404).json({ error: "User not found" });
         }
-        return res.status(200).json(result[0]);
-    });
+
+        res.status(200).json({
+            success: true,
+            user: results[0],
+        });
+    } catch (err) {
+        console.error("Database Error:", err);
+        res.status(500).json({ error: "Server error", details: err.message });
+    }
 };
-//update user account
-export const updateUserAccount = (req, res) => {
+// Update user account info
+export const updateUserAccount = async (req, res) => {
     const userId = req.user?.userId;
+
     if (!userId) {
         return res.status(401).json({ error: "Unauthorized access" });
     }
 
-    const { username, email } = req.body; // Extract data from request body
-    const profile = req.file ? req.file.filename : null; // Check if a new profile image is uploaded
+    const { username, email } = req.body;
+    const newProfile = req.file?.filename || null;
 
     if (!username || !email) {
         return res.status(400).json({ error: "Username and email are required" });
     }
 
-    // First, fetch the current profile image from the database
-    const getUserQuery = `SELECT profile FROM users WHERE id = ?`;
-
-    db.query(getUserQuery, [userId], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Server error" });
-        }
+    try {
+        const [results] = await db.query(`SELECT profile FROM users WHERE id = ?`, [userId]);
 
         if (results.length === 0) {
             return res.status(404).json({ error: "User doesn't exist" });
         }
 
-        // Maintain the current profile picture if no new one is uploaded
         const existingProfile = results[0].profile;
-        const finalProfile = profile || existingProfile;
+        const finalProfile = newProfile || existingProfile;
 
-        // Now update the user
-        const updateQuery = `UPDATE users SET username = ?, email = ?, profile = ? WHERE id = ?`;
-        db.query(updateQuery, [username, email, finalProfile, userId], (updateErr, updateResult) => {
-            if (updateErr) {
-                console.error("Database error:", updateErr);
-                return res.status(500).json({ error: "Server error" });
-            }
+        const updateQuery = `
+            UPDATE users
+            SET username = ?, email = ?, profile = ?
+            WHERE id = ?
+        `;
 
-            res.status(200).json({
-                success: true,
-                message: "Account updated successfully",
-                profile: finalProfile,
-            });
+        await db.query(updateQuery, [username, email, finalProfile, userId]);
+
+        res.status(200).json({
+            success: true,
+            message: "Account updated successfully",
+            profile: finalProfile,
         });
-    });
+    } catch (err) {
+        console.error("Database Error:", err);
+        res.status(500).json({ error: "Server error", details: err.message });
+    }
 };
