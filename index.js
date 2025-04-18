@@ -67,8 +67,7 @@ app.use('/uploads/profile', express.static(path.join(__dirname, 'uploads/profile
 app.use('/uploads/student', express.static(path.join(__dirname, 'uploads/student')));
 app.use('/uploads/userpic', express.static(path.join(__dirname, 'uploads/userpic')));
 app.use('/uploads/items', express.static(path.join(__dirname, 'uploads/items')));
-app.use("/uploads/certificate", express.static("uploads/certificate"));
-
+app.use("/uploads/certificate", express.static(path.join(__dirname, "uploads/certificate")));
 
 // Create tables
 // createLeaveTable();
