@@ -3,7 +3,7 @@ import express from 'express'
 import multer from 'multer';
 
 import { authenticateJWT, isAdmin } from '../middlewares/verifyJwt.js'
-import { deleteCertificate, getEmployeeWithCertificates, uploadCertificates } from '../controllers/employeeCertificateController.js';
+import { deleteCertificate, getEmployeeFiles, getEmployeeWithCertificates, uploadCertificates } from '../controllers/employeeCertificateController.js';
 
 const router = express.Router()
 
@@ -21,6 +21,7 @@ const upload = multer({ storage });
 router.post("/addCertificates", upload.array("certificate_files", 5),uploadCertificates)
 router.get("/view/:employeeId",getEmployeeWithCertificates)
 router.delete("/deleteCertificate/:id",deleteCertificate)
+router.get("/personalFiles",getEmployeeFiles)
 
 
 export { router as employeeCertificatesRouter };
