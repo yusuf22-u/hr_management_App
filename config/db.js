@@ -14,13 +14,13 @@ const pool = mysql.createPool({
 
 const db = pool.promise();
 
-// ✅ Test connection
+// Test connection
 db.query('SELECT 1')
   .then(() => {
-    console.log('✅ Connected to MySQL database (via pool)');
+    console.log(' Connected to MySQL database (via pool)');
   })
   .catch((err) => {
-    console.error('❌ MySQL connection error:', err);
+    console.error('MySQL connection error:', err);
   });
 
 export default db;
