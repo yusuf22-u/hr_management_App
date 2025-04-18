@@ -74,21 +74,21 @@ app.use("/uploads/certificate", express.static("uploads/certificate"));
 // createLeaveTable();
 
 
-createEmployeeTable();
-createUserTable();
-createnotificationsTable();
-createStaffEvaluationTable(); 
-createStudentTable(); // Uncomment if needed
-createStudentScoresTable()
-createItemsTable()
-createStockTable()
-createitem_allocationsTable()
-createLeaveTable();
-createPayrollTable()
-createMessageTable()
-createCertificatesTable()
-createEmailTable()
-createCenterFormTable()
+// createEmployeeTable();
+// createUserTable();
+// createnotificationsTable();
+// createStaffEvaluationTable(); 
+// createStudentTable(); // Uncomment if needed
+// createStudentScoresTable()
+// createItemsTable()
+// createStockTable()
+// createitem_allocationsTable()
+// createLeaveTable();
+// createPayrollTable()
+// createMessageTable()
+// createCertificatesTable()
+// createEmailTable()
+// createCenterFormTable()
 
 // Set up routes
 app.use('/v1', userRouter);
