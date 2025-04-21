@@ -75,7 +75,7 @@ app.use("/uploads/certificate", express.static(path.join(__dirname, "uploads/cer
 // drop tables
 (async () => {
     await dropTables(); // Safely drops the tables
-    createEmployeeTable();
+    // createEmployeeTable();
     createUserTable();
   
     createLeaveTable();

@@ -20,7 +20,7 @@ export const dropTables = async () => {
     await db.query(`DROP TABLE IF EXISTS center_forms`);
     await db.query(`DROP TABLE IF EXISTS emails`);
     await db.query(`DROP TABLE IF EXISTS users`);
-    await db.query(`DROP TABLE IF EXISTS employees`);
+    // await db.query(`DROP TABLE IF EXISTS employees`);
   
 
     // Re-enable foreign key checks
