@@ -87,7 +87,7 @@ app.use("/uploads/certificate", express.static(path.join(__dirname, "uploads/cer
 
 // createUserTable();
 // createnotificationsTable();
-// createStaffEvaluationTable(); 
+createStaffEvaluationTable(); 
 // createStudentTable(); // Uncomment if needed
 // createStudentScoresTable()
 // createItemsTable()
