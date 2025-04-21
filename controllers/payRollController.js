@@ -346,22 +346,32 @@ export const exportNominalRollToExcel = async (req, res) => {
         res.status(500).json({ error: "Failed to export Excel file" });
     }
 };
-export const NominalRoll= async (req, res) => {
-    const [rows] = await db.query(`
-      SELECT 
-          e.employee_id AS No,
-          e.full_name AS Name,
-          e.position AS Designation,
-          12 AS Months,
-          ROUND(AVG(p.net_salary), 2) AS Monthly,
-          ROUND(12 * AVG(p.net_salary), 2) AS GrossAnnualSalary,
-          e.department AS Department,
-          p.grade AS GradePoint
-      FROM employees e
-      JOIN payroll p ON e.employee_id = p.employee_id
-      GROUP BY e.employee_id
-      ORDER BY e.full_name;
-    `);
-    res.json(rows);
- };
+export const NominalRoll = async (req, res) => {
+    try {
+      const [rows] = await db.query(`
+        SELECT 
+            e.employee_id AS No,
+            e.full_name AS Name,
+            e.position AS Designation,
+            12 AS Months,
+            ROUND(AVG(p.net_salary), 2) AS Monthly,
+            ROUND(12 * AVG(p.net_salary), 2) AS GrossAnnualSalary,
+            e.department AS Department,
+            MAX(p.grade) AS GradePoint
+        FROM employees e
+        JOIN payroll p ON e.employee_id = p.employee_id
+        GROUP BY 
+            e.employee_id, 
+            e.full_name, 
+            e.position, 
+            e.department
+        ORDER BY e.full_name;
+      `);
+  
+      res.json(rows);
+    } catch (err) {
+      console.error("❌ Error fetching Nominal Roll:", err);
+      res.status(500).json({ error: "Server error", err });
+    }
+  };
   
