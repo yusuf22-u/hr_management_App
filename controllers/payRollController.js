@@ -1,14 +1,17 @@
 import db from "../config/db.js";
 export const createPayRoll = async (req, res) => {
-    const { 
-        employee_id, 
-        basic_salary, 
-        resident_allowance = 0, 
-        responsibility_allowance = 0, 
-        transport_allowance = 0, 
-        income_tax, 
-        social_security_contribution 
+    const {
+        employee_id,
+        basic_salary,
+        resident_allowance = 0,
+        responsibility_allowance = 0,
+        transport_allowance = 0,
+        income_tax,
+        social_security_contribution
     } = req.body;
+
+    // Helper to sanitize decimal inputs
+    const toDecimal = (val) => (val === '' || val === undefined || val === null ? 0 : parseFloat(val));
 
     try {
         // Check if employee exists
@@ -34,6 +37,14 @@ export const createPayRoll = async (req, res) => {
             return res.status(400).json({ error: "Payroll for this employee has already been added this month" });
         }
 
+        // Sanitize inputs
+        const basic = toDecimal(basic_salary);
+        const resident = toDecimal(resident_allowance);
+        const responsibility = toDecimal(responsibility_allowance);
+        const transport = toDecimal(transport_allowance);
+        const tax = toDecimal(income_tax);
+        const social = toDecimal(social_security_contribution);
+
         // Insert payroll
         const sql = `INSERT INTO payroll (
                         employee_id, basic_salary, resident_allowance, responsibility_allowance, 
@@ -42,25 +53,23 @@ export const createPayRoll = async (req, res) => {
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())`;
 
         const [result] = await db.query(sql, [
-            employee_id, basic_salary, resident_allowance, responsibility_allowance,
-            transport_allowance, income_tax, social_security_contribution
+            employee_id, basic, resident, responsibility, transport, tax, social
         ]);
 
-        // Optionally calculate net_salary and return it
-        const net_salary = basic_salary + resident_allowance + responsibility_allowance + transport_allowance
-            - (income_tax + social_security_contribution);
+        const net_salary = basic + resident + responsibility + transport - (tax + social);
 
-        res.status(201).json({ 
-            message: "Employee payroll added successfully", 
+        res.status(201).json({
+            message: "Employee payroll added successfully",
             result,
-            net_salary 
+            net_salary
         });
 
     } catch (err) {
+        console.error("❌ Server error:", err);
         res.status(500).json({ error: "Server error", err });
-        console.error("error",  err)
     }
 };
+
 
 export const getEmployeeSalary = async (req, res) => {
     const { employee_id } = req.params;
