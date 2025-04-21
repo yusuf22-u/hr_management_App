@@ -4,74 +4,60 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import multer from 'multer';
 dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'yourSecretKey';
-
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, './uploads/userpic'),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
-});
-
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    allowedTypes.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only JPEG, PNG, and JPG formats are allowed'));
-  }
-}).single('profile');
-
+const JWT_SECRET = process.env.JWT_SECRET;
+import { upload } from '../utils/cloudinary.js';
 export const registerUser = async (req, res) => {
-  upload(req, res, async (uploadErr) => {
-    if (uploadErr) return res.status(400).json({ success: false, error: uploadErr.message });
+  const { employee_id, username, email, password, role } = req.body;
+  const profilePic = req.file ? req.file.path : ''; // Cloudinary URL
+  console.log('BODY:', req.body);
+  if (!employee_id || !username || !email || !password) {
+    return res.status(400).json({ success: false, error: 'All fields are required' });
+  }
 
-    const { employee_id, username, email, password, role } = req.body;
-    const profilePic = req.file ? req.file.filename : 'profile.png';
-
-    if (!employee_id || !username || !email || !password) {
-      return res.status(400).json({ success: false, error: 'All fields are required' });
+  try {
+    const [employeeResults] = await db.query('SELECT * FROM employees WHERE employee_id = ?', [employee_id]);
+    if (employeeResults.length === 0) {
+      return res.status(404).json({ success: false, error: 'Employee does not exist' });
     }
 
-    try {
-      const [employeeResults] = await db.query('SELECT * FROM employees WHERE employee_id = ?', [employee_id]);
-      if (employeeResults.length === 0) {
-        return res.status(404).json({ success: false, error: 'Employee does not exist' });
-      }
-
-      const [userResults] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-      if (userResults.length > 0) {
-        return res.status(409).json({ success: false, error: 'User already exists' });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const userRole = role || 'user';
-
-      const [result] = await db.query(
-        'INSERT INTO users (employee_id, username, email, password, role, profile) VALUES (?, ?, ?, ?, ?, ?)',
-        [employee_id, username, email, hashedPassword, userRole, profilePic]
-      );
-
-      const token = jwt.sign(
-        {
-          userId: result.insertId,
-          employee_id,
-          role: userRole
-        },
-        JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        token,
-        profile_pic: `/uploads/userpic/${profilePic}`
-      });
-
-    } catch (error) {
-      res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+    const [userResults] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (userResults.length > 0) {
+      return res.status(409).json({ success: false, error: 'User already exists' });
     }
-  });
+
+    const [userResultsID] = await db.query('SELECT * FROM users WHERE employee_id = ?', [employee_id]);
+    if (userResultsID.length > 0) {
+      return res.status(409).json({ success: false, error: 'User with this ID already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userRole = role || 'user';
+
+    const [result] = await db.query(
+      'INSERT INTO users (employee_id, username, email, password, role, profile) VALUES (?, ?, ?, ?, ?, ?)',
+      [employee_id, username, email, hashedPassword, userRole, profilePic]
+    );
+
+    const token = jwt.sign(
+      {
+        userId: result.insertId,
+        employee_id,
+        role: userRole
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      token,
+      profile_pic: profilePic
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Server error: ' + error.message });
+  }
 };
 
 export const loginUser = async (req, res) => {
@@ -93,7 +79,7 @@ export const loginUser = async (req, res) => {
       userId: user.id,
       employee_id: user.employee_id,
       role: user.role,
-      profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+      profilePic: user.profile ? `${user.profile}` : null,
       username: user.username
     }, JWT_SECRET, { expiresIn: '1h' });
 
@@ -111,7 +97,7 @@ export const loginUser = async (req, res) => {
         id: user.id,
         employee_id: user.employee_id,
         role: user.role,
-        profilePic: user.profile ? `/uploads/userpic/${user.profile}` : null,
+        profilePic: user.profile ? `${user.profile}` : null,
         username: user.username,
         email: user.email
       }
@@ -199,99 +185,100 @@ export const updateUserRole = async (req, res) => {
 };
 // Get all users' login/logout history
 export const getAllUsersHistory = async (req, res) => {
-    const sql = `
+  const sql = `
         SELECT profile, username, last_login AS lastIn, last_logout AS lastOut
         FROM users
         ORDER BY last_login DESC
     `;
 
-    try {
-        const [results] = await db.query(sql);
+  try {
+    const [results] = await db.query(sql);
 
-        if (results.length === 0) {
-            return res.status(404).json({ error: "No user history found" });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "User history retrieved successfully",
-            data: results,
-        });
-    } catch (err) {
-        console.error("Database Error:", err);
-        res.status(500).json({ error: "Server error", details: err.message });
+    if (results.length === 0) {
+      return res.status(404).json({ error: "No user history found" });
     }
+
+    res.status(200).json({
+      success: true,
+      message: "User history retrieved successfully",
+      data: results,
+    });
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
 };
 // Get user info by ID (using ID from token middleware)
 export const getUserById = async (req, res) => {
-    const userId = req.user?.userId;
+  const userId = req.user?.userId;
 
-    if (!userId) {
-        return res.status(401).json({ error: "Unauthorized: No user ID found" });
-    }
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized: No user ID found" });
+  }
 
-    const sql = `
+  const sql = `
         SELECT profile, username, email
         FROM users
         WHERE id = ?
     `;
 
-    try {
-        const [results] = await db.query(sql, [userId]);
+  try {
+    const [results] = await db.query(sql, [userId]);
 
-        if (results.length === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        res.status(200).json({
-            success: true,
-            user: results[0],
-        });
-    } catch (err) {
-        console.error("Database Error:", err);
-        res.status(500).json({ error: "Server error", details: err.message });
+    if (results.length === 0) {
+      return res.status(404).json({ error: "User not found" });
     }
+
+    res.status(200).json({
+      success: true,
+      user: results[0],
+    });
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
 };
 // Update user account info
 export const updateUserAccount = async (req, res) => {
-    const userId = req.user?.userId;
+  const userId = req.user?.userId;
 
-    if (!userId) {
-        return res.status(401).json({ error: "Unauthorized access" });
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized access" });
+  }
+
+  const { username, email } = req.body;
+  const newProfile = req.file?.path || null; // Cloudinary returns `path` as the full URL
+
+  if (!username || !email) {
+    return res.status(400).json({ error: "Username and email are required" });
+  }
+
+  try {
+    const [results] = await db.query(`SELECT profile FROM users WHERE id = ?`, [userId]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "User doesn't exist" });
     }
 
-    const { username, email } = req.body;
-    const newProfile = req.file?.filename || null;
+    const existingProfile = results[0].profile;
+    const finalProfile = newProfile || existingProfile;
 
-    if (!username || !email) {
-        return res.status(400).json({ error: "Username and email are required" });
-    }
+    const updateQuery = `
+      UPDATE users
+      SET username = ?, email = ?, profile = ?
+      WHERE id = ?
+    `;
 
-    try {
-        const [results] = await db.query(`SELECT profile FROM users WHERE id = ?`, [userId]);
+    await db.query(updateQuery, [username, email, finalProfile, userId]);
 
-        if (results.length === 0) {
-            return res.status(404).json({ error: "User doesn't exist" });
-        }
-
-        const existingProfile = results[0].profile;
-        const finalProfile = newProfile || existingProfile;
-
-        const updateQuery = `
-            UPDATE users
-            SET username = ?, email = ?, profile = ?
-            WHERE id = ?
-        `;
-
-        await db.query(updateQuery, [username, email, finalProfile, userId]);
-
-        res.status(200).json({
-            success: true,
-            message: "Account updated successfully",
-            profile: finalProfile,
-        });
-    } catch (err) {
-        console.error("Database Error:", err);
-        res.status(500).json({ error: "Server error", details: err.message });
-    }
+    res.status(200).json({
+      success: true,
+      message: "Account updated successfully",
+      profile: finalProfile, // Return the Cloudinary URL
+    });
+  } catch (err) {
+    console.error("Database Error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
 };
+

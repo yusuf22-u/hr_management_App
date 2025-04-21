@@ -7,14 +7,17 @@ export const createnotificationsTable = () => {
         message TEXT NOT NULL,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES employees(employee_id)
+        FOREIGN KEY (user_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 );
 
 
     `;
 
-    db.query(sql, (err, result) => {
-        if (err) throw err;
-        console.log(' notifications table created or already exists');
+    db.query(sql)
+    .then(() => {
+      console.log('✅ NOTIFICATION table created or already exists');
+    })
+    .catch((err) => {
+      console.error('❌ Failed to create notification table:', err.message);
     });
 };

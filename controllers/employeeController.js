@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import { cloudinary } from '../utils/cloudinary.js';
 export const createEmployee = async (req, res) => {
   const {
     employee_id,
@@ -11,7 +12,8 @@ export const createEmployee = async (req, res) => {
     date_of_birth,
     date_of_admission
   } = req.body;
-  const profile_pic = req.file ? req.file.filename : null;
+
+  const profile_pic = req.file ? req.file.path : null; // Cloudinary gives full URL
 
   try {
     const [existing] = await db.query(
@@ -39,7 +41,7 @@ export const createEmployee = async (req, res) => {
         email,
         address,
         phone_number,
-        profile_pic,
+        profile_pic, // This is a Cloudinary URL
         position,
         department,
         date_of_birth,
@@ -52,6 +54,7 @@ export const createEmployee = async (req, res) => {
     res.status(500).json({ error: 'Database error: ' + err.message });
   }
 };
+
 
 export const getEmployeeById = async (req, res) => {
   const { employee_id } = req.params;
@@ -86,18 +89,26 @@ export const updateEmployee = async (req, res) => {
   } = req.body;
 
   try {
-    const [existing] = await db.query(
+    const [existingRows] = await db.query(
       'SELECT profile_pic FROM employees WHERE employee_id = ?',
       [employee_id]
     );
 
-    if (existing.length === 0) {
+    if (existingRows.length === 0) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    let profile_pic = existing[0].profile_pic;
-    if (req.file) {
-      profile_pic = req.file.filename;
+    let profile_pic = existingRows[0].profile_pic;
+
+    // Upload new image and get secure_url
+    if (req.file && req.file.path) {
+      // Optional: delete old image from cloudinary if you want
+      const oldPublicId = profile_pic?.split('/').pop().split('.')[0]; // crude way to extract public_id
+      if (oldPublicId) {
+        await cloudinary.uploader.destroy(`employee_profiles/${oldPublicId}`);
+      }
+
+      profile_pic = req.file.path; // Cloudinary returns the URL as `path`
     }
 
     const [result] = await db.query(
@@ -125,10 +136,6 @@ export const updateEmployee = async (req, res) => {
         employee_id
       ]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Update failed: Employee not found' });
-    }
 
     res.json({ message: 'Employee updated successfully' });
   } catch (err) {

@@ -1,27 +1,27 @@
 
 import express from 'express'
-import multer from 'multer';
 
+import { upload as uploadCerts } from '../utils/cloudinary.js';
 import { authenticateJWT, isAdmin } from '../middlewares/verifyJwt.js'
 import { deleteCertificate, getEmployeeFiles, getEmployeeWithCertificates, uploadCertificates } from '../controllers/employeeCertificateController.js';
 
 const router = express.Router()
 
 
-// Configure Multer for multiple file uploads
-const storage = multer.diskStorage({
-    destination: "./uploads/certificate/",
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + "-" + file.originalname);
-    },
-});
-const upload = multer({ storage });
 
-// Route to upload multiple certificates
-router.post("/addCertificates", upload.array("certificate_files", 5),uploadCertificates)
-router.get("/view/:employeeId",getEmployeeWithCertificates)
-router.delete("/deleteCertificate/:id",deleteCertificate)
-router.get("/personalFiles",getEmployeeFiles)
+
+router.post(
+    '/upload_certificate', authenticateJWT, isAdmin,
+    (req, res, next) => {
+        req.folder = `employee_certificates/${req.body.employee_id}`;
+        next();
+    },
+    uploadCerts.array('certificate_files', 10), // Use uploadCerts here
+    uploadCertificates
+);
+router.get("/view/:employeeId", authenticateJWT, getEmployeeWithCertificates)
+router.delete("/deleteCertificate/:id", authenticateJWT, isAdmin, deleteCertificate)
+router.get("/personalFiles", getEmployeeFiles)
 
 
 export { router as employeeCertificatesRouter };

@@ -37,12 +37,14 @@ import { createCertificatesTable } from './models/certificatesModel.js';
 import { createEmailTable } from './models/EmailModel.js';
 import { createCenterFormTable } from './models/centerForm.js';
 import { centerformRouter } from './routers/centerForm.js';
+import { dropTables } from './utils/resetTables.js';
 
 const app = express();
 const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
     cors: {
         origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
+        // origin: 'http://localhost:5173', // Allow this origin
         methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
         credentials: true // Allow credentials (cookies, authorization headers)
     }
@@ -52,6 +54,7 @@ export { io };
 app.use(cookieParser());
 app.use(cors({
   origin: 'https://hr-management-sys-app.netlify.app',
+//   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
@@ -69,11 +72,20 @@ app.use('/uploads/userpic', express.static(path.join(__dirname, 'uploads/userpic
 app.use('/uploads/items', express.static(path.join(__dirname, 'uploads/items')));
 app.use("/uploads/certificate", express.static(path.join(__dirname, "uploads/certificate")));
 
-// Create tables
-// createLeaveTable();
+// drop tables
+(async () => {
+    await dropTables(); // Safely drops the tables
+    createEmployeeTable();
+    createUserTable();
+    createLeaveTable();
+    createnotificationsTable();
+    createPayrollTable();
+    createMessageTable();
+    createCertificatesTable();
+  })();
+  
 
 
-// createEmployeeTable();
 // createUserTable();
 // createnotificationsTable();
 // createStaffEvaluationTable(); 

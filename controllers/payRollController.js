@@ -1,5 +1,4 @@
 import db from "../config/db.js";
-
 export const createPayRoll = async (req, res) => {
     const { 
         employee_id, 
@@ -11,11 +10,8 @@ export const createPayRoll = async (req, res) => {
         social_security_contribution 
     } = req.body;
 
-    const gross_salary = basic_salary + resident_allowance + responsibility_allowance + transport_allowance;
-    const total_deductions = income_tax + social_security_contribution;
-    const net_salary = gross_salary - total_deductions;
-
     try {
+        // Check if employee exists
         const [employee] = await db.query(
             `SELECT employee_id FROM employees WHERE employee_id = ?`,
             [employee_id]
@@ -25,22 +21,44 @@ export const createPayRoll = async (req, res) => {
             return res.status(404).json({ error: "Employee does not exist" });
         }
 
+        // Check if payroll already exists for this employee in the current month
+        const [existingPayroll] = await db.query(
+            `SELECT * FROM payroll 
+             WHERE employee_id = ? 
+             AND MONTH(salary_date) = MONTH(CURDATE()) 
+             AND YEAR(salary_date) = YEAR(CURDATE())`,
+            [employee_id]
+        );
+
+        if (existingPayroll.length > 0) {
+            return res.status(400).json({ error: "Payroll for this employee has already been added this month" });
+        }
+
+        // Insert payroll
         const sql = `INSERT INTO payroll (
                         employee_id, basic_salary, resident_allowance, responsibility_allowance, 
                         transport_allowance, income_tax, social_security_contribution, 
-                        net_salary, salary_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`;
+                        salary_date
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())`;
 
         const [result] = await db.query(sql, [
             employee_id, basic_salary, resident_allowance, responsibility_allowance,
-            transport_allowance, income_tax, social_security_contribution,
-            net_salary
+            transport_allowance, income_tax, social_security_contribution
         ]);
 
-        res.status(201).json({ message: "Employee payroll added successfully", result });
+        // Optionally calculate net_salary and return it
+        const net_salary = basic_salary + resident_allowance + responsibility_allowance + transport_allowance
+            - (income_tax + social_security_contribution);
+
+        res.status(201).json({ 
+            message: "Employee payroll added successfully", 
+            result,
+            net_salary 
+        });
 
     } catch (err) {
-        res.status(500).json({ error: "Server error", details: err });
+        res.status(500).json({ error: "Server error" });
+        console.error("error",  err)
     }
 };
 

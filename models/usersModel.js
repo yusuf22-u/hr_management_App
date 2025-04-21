@@ -14,13 +14,16 @@ export const createUserTable = () => {
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
     last_logout TIMESTAMP NULL,
-    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 );
 
     `;
 
-    db.query(sql, (err, result) => {
-        if (err) throw err;
-        console.log('Users table created or already exists');
+    db.query(sql)
+    .then(() => {
+      console.log('✅ USERS table created or already exists');
+    })
+    .catch((err) => {
+      console.error('❌ Failed to create USERS table:', err.message);
     });
 };

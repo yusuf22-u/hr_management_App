@@ -3,21 +3,45 @@ import jwt from 'jsonwebtoken'
 export const uploadCertificates = async (req, res) => {
     const { employee_id } = req.body;
     const files = req.files;
-
+  
+    // Check if files are uploaded
     if (!files || files.length === 0) {
-        return res.status(400).json({ error: "No files uploaded" });
+      return res.status(400).json({ error: "No files uploaded" });
     }
-
-    let sql = "INSERT INTO employee_certificates (employee_id, certificate_name, certificate_file) VALUES ?";
-    let values = files.map((file) => [employee_id, file.originalname, file.filename]);
-
+  
     try {
-        const [result] = await db.query(sql, [values]);
-        res.json({ message: `${files.length} Certificates uploaded successfully` });
+      // Check if the employee_id exists in the database
+      const [userResultsID] = await db.query('SELECT * FROM employees WHERE employee_id = ?', [employee_id]);
+  
+      // If the employee doesn't exist
+      if (userResultsID.length === 0) {
+        return res.status(404).json({ success: false, error: 'No employee found with this ID' });
+      }
+  
+      const sql = `
+        INSERT INTO employee_certificates (employee_id, certificate_name, certificate_file)
+        VALUES ?
+      `;
+  
+      // Cloudinary files are accessible via file.originalname and file.path or file.filename (depends on multer-cloudinary config)
+      const values = files.map(file => [
+        employee_id,
+        file.originalname,
+        file.path || file.filename // cloudinary `secure_url` usually appears in `file.path`
+      ]);
+  
+      // Perform the database insert operation
+      const [result] = await db.query(sql, [values]);
+  
+      // Send success response
+      res.json({ message: `${files.length} Certificates uploaded successfully` });
+  
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+      console.error('Upload Error:', err);
+      return res.status(500).json({ error: "employee dosn't exits" });
     }
-};
+  };
+  
 
 export const getEmployeeWithCertificates = async (req, res) => {
     const { employeeId } = req.params;
