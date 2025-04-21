@@ -16,7 +16,7 @@ export const dropTables = async () => {
     await db.query(`DROP TABLE IF EXISTS students`);
     await db.query(`DROP TABLE IF EXISTS staff_evaluation`);
     await db.query(`DROP TABLE IF EXISTS leaves`);
-    await db.query(`DROP TABLE IF EXISTS certificates`);
+    await db.query(`DROP TABLE IF EXISTS employee_certificates`);
     await db.query(`DROP TABLE IF EXISTS center_forms`);
     await db.query(`DROP TABLE IF EXISTS emails`);
     await db.query(`DROP TABLE IF EXISTS users`);
