@@ -44,7 +44,6 @@ const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
     cors: {
         origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
-        // origin: 'http://localhost:5173', // Allow this origin
         methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
         credentials: true // Allow credentials (cookies, authorization headers)
     }
@@ -54,7 +53,6 @@ export { io };
 app.use(cookieParser());
 app.use(cors({
   origin: 'https://hr-management-sys-app.netlify.app',
-//   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
