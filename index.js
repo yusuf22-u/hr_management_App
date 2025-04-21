@@ -70,18 +70,18 @@ app.use('/uploads/userpic', express.static(path.join(__dirname, 'uploads/userpic
 app.use('/uploads/items', express.static(path.join(__dirname, 'uploads/items')));
 app.use("/uploads/certificate", express.static(path.join(__dirname, "uploads/certificate")));
 
-// drop tables
-(async () => {
-    await dropTables(); // Safely drops the tables
-    // createEmployeeTable();
-    createUserTable();
+// // drop tables
+// (async () => {
+//     await dropTables(); // Safely drops the tables
+//     // createEmployeeTable();
+//     createUserTable();
   
-    createLeaveTable();
-    createnotificationsTable();
-    createPayrollTable();
-    createMessageTable();
-    createCertificatesTable();
-  })();
+//     createLeaveTable();
+//     createnotificationsTable();
+//     createPayrollTable();
+//     createMessageTable();
+//     createCertificatesTable();
+//   })();
   
 
 

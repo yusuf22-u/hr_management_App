@@ -57,7 +57,7 @@ export const createPayRoll = async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).json({ error: "Server error" });
+        res.status(500).json({ error: "Server error", err });
         console.error("error",  err)
     }
 };
