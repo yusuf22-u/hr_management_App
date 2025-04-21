@@ -2,27 +2,32 @@ import db from '../config/db.js';
 
 export const dropTables = async () => {
   try {
-    // Drop item table first (if it depends on users via FK)
+    // Disable foreign key checks
+    await db.query('SET FOREIGN_KEY_CHECKS = 0');
+
+    // Drop child tables first, then parent tables
+    await db.query(`DROP TABLE IF EXISTS message`);
+    await db.query(`DROP TABLE IF EXISTS notifications`);
+    await db.query(`DROP TABLE IF EXISTS payroll`);
+    await db.query(`DROP TABLE IF EXISTS item_allocations`);
+    await db.query(`DROP TABLE IF EXISTS stock`);
+    await db.query(`DROP TABLE IF EXISTS items`);
+    await db.query(`DROP TABLE IF EXISTS student_scores`);
+    await db.query(`DROP TABLE IF EXISTS students`);
+    await db.query(`DROP TABLE IF EXISTS staff_evaluation`);
     await db.query(`DROP TABLE IF EXISTS leaves`);
-    console.log('✅ leave table dropped');
-
-    // Then drop users table
+    await db.query(`DROP TABLE IF EXISTS certificates`);
+    await db.query(`DROP TABLE IF EXISTS center_forms`);
+    await db.query(`DROP TABLE IF EXISTS emails`);
     await db.query(`DROP TABLE IF EXISTS users`);
-    console.log('✅ users table dropped');
-    
-    // Then drop notification table
-    await db.query(`DROP TABLE IF EXISTS  notifications`);
-    console.log('✅ users table dropped');
-     // Then drop payrol table
-     await db.query(`DROP TABLE IF EXISTS  payroll`);
-     console.log('✅ payroll table dropped');
-      // Then drop notification table
-    await db.query(`DROP TABLE IF EXISTS  message`);
-    console.log('✅ message table dropped');
+    await db.query(`DROP TABLE IF EXISTS employees`);
+  
 
-    await db.query(`DROP TABLE IF EXISTS  employee_certificates`);
-    console.log('✅ employee_certificates table dropped');
-  } catch (err) {
-    console.error('❌ Error dropping tables:', err.message);
+    // Re-enable foreign key checks
+    await db.query('SET FOREIGN_KEY_CHECKS = 1');
+
+    console.log('✅ All tables dropped successfully');
+  } catch (error) {
+    console.error('❌ Error dropping tables:', error);
   }
 };
