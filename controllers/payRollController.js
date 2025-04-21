@@ -51,10 +51,10 @@ export const createPayRoll = async (req, res) => {
         const tax = toDecimal(income_tax);
         const social = toDecimal(social_security_contribution);
 
-        // Optional debug logging
-        console.log("🔍 Final sanitized values:", {
-            employee_id, grade, basic, resident, responsibility, transport, tax, social
-        });
+        // // Optional debug logging
+        // console.log("🔍 Final sanitized values:", {
+        //     employee_id, grade, basic, resident, responsibility, transport, tax, social
+        // });
 
         // Insert payroll
         const sql = `INSERT INTO payroll (
@@ -247,10 +247,14 @@ export const exportNominalRollToExcel = async (req, res) => {
                 ROUND(AVG(p.net_salary), 2) AS Monthly,
                 ROUND(12 * AVG(p.net_salary), 2) AS GrossAnnualSalary,
                 e.department AS Department,
-                p.grade AS GradePoint
+                MAX(p.grade) AS GradePoint
             FROM employees e
             JOIN payroll p ON e.employee_id = p.employee_id
-            GROUP BY e.employee_id
+            GROUP BY 
+                e.employee_id,
+                e.full_name,
+                e.position,
+                e.department
             ORDER BY e.full_name;
         `);
 
@@ -263,10 +267,8 @@ export const exportNominalRollToExcel = async (req, res) => {
         worksheet.getCell('A1').font = { size: 16, bold: true };
         worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
 
-        // 👉 Add empty row after title
         worksheet.addRow([]);
 
-        // 👉 Add headers manually (as a row)
         const headers = [
             'No',
             'Name',
@@ -279,12 +281,10 @@ export const exportNominalRollToExcel = async (req, res) => {
         ];
         worksheet.addRow(headers);
 
-        // 👉 Style header row
         const headerRow = worksheet.getRow(3);
         headerRow.font = { bold: true };
         headerRow.alignment = { horizontal: 'center' };
 
-        // 👉 Add employee rows
         rows.forEach(row => {
             worksheet.addRow([
                 row.No,
@@ -298,7 +298,6 @@ export const exportNominalRollToExcel = async (req, res) => {
             ]);
         });
 
-        // 👉 Totals
         let totalMonthly = 0;
         let totalAnnual = 0;
         rows.forEach(row => {
@@ -306,7 +305,7 @@ export const exportNominalRollToExcel = async (req, res) => {
             totalAnnual += parseFloat(row.GrossAnnualSalary);
         });
 
-        worksheet.addRow([]); // spacer row
+        worksheet.addRow([]);
 
         const totalRow = worksheet.addRow([
             '', '', '', '', '',
@@ -315,13 +314,11 @@ export const exportNominalRollToExcel = async (req, res) => {
             ''
         ]);
 
-        // 👉 Merge & style totals row
         worksheet.mergeCells(`F${totalRow.number}:F${totalRow.number}`);
         worksheet.mergeCells(`G${totalRow.number}:H${totalRow.number}`);
         totalRow.font = { bold: true };
         totalRow.alignment = { vertical: 'middle', horizontal: 'left' };
 
-        // 👉 Set column widths
         worksheet.columns = [
             { width: 10 },
             { width: 30 },
@@ -333,7 +330,6 @@ export const exportNominalRollToExcel = async (req, res) => {
             { width: 20 },
         ];
 
-        // 👉 Set headers to download the file
         res.setHeader('Content-Type',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition',
@@ -346,6 +342,7 @@ export const exportNominalRollToExcel = async (req, res) => {
         res.status(500).json({ error: "Failed to export Excel file" });
     }
 };
+
 export const NominalRoll = async (req, res) => {
     try {
       const [rows] = await db.query(`
