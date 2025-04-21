@@ -5,6 +5,7 @@ export const createPayrollTable = async () => {
         CREATE TABLE IF NOT EXISTS payroll (
             payroll_id INT PRIMARY KEY AUTO_INCREMENT,
             employee_id INT NOT NULL,
+            grade VARCHAR(50) NOT NULL,
             basic_salary DECIMAL(10, 2) NOT NULL,
             resident_allowance DECIMAL(10, 2) DEFAULT 0,
             responsibility_allowance DECIMAL(10, 2) DEFAULT NULL, 

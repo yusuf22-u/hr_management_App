@@ -1,15 +1,17 @@
 import db from "../config/db.js";
+import ExcelJS from 'exceljs';
 export const createPayRoll = async (req, res) => {
-    const {
-        employee_id,
-        basic_salary,
-        resident_allowance = 0,
-        responsibility_allowance = 0,
-        transport_allowance = 0,
-        income_tax,
-        social_security_contribution
+    const { 
+        employee_id, 
+        grade,
+        basic_salary, 
+        resident_allowance = 0, 
+        responsibility_allowance = 0, 
+        transport_allowance = 0, 
+        income_tax, 
+        social_security_contribution 
     } = req.body;
-
+    
     // Helper to sanitize decimal inputs
     const toDecimal = (val) => (val === '' || val === undefined || val === null ? 0 : parseFloat(val));
 
@@ -47,14 +49,16 @@ export const createPayRoll = async (req, res) => {
 
         // Insert payroll
         const sql = `INSERT INTO payroll (
-                        employee_id, basic_salary, resident_allowance, responsibility_allowance, 
-                        transport_allowance, income_tax, social_security_contribution, 
-                        salary_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())`;
-
+            employee_id, grade, basic_salary, resident_allowance, responsibility_allowance, 
+            transport_allowance, income_tax, social_security_contribution, 
+            salary_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`;
+        
         const [result] = await db.query(sql, [
-            employee_id, basic, resident, responsibility, transport, tax, social
+            employee_id, grade, basic_salary, resident_allowance, responsibility_allowance,
+            transport_allowance, income_tax, social_security_contribution
         ]);
+        
 
         const net_salary = basic + resident + responsibility + transport - (tax + social);
 
@@ -224,3 +228,132 @@ export const getEmailText = async (req, res) => {
         res.status(500).json({ error: "Server error", err });
     }
 };
+export const exportNominalRollToExcel = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                e.employee_id AS No,
+                e.full_name AS Name,
+                e.position AS Designation,
+                12 AS Months,
+                ROUND(AVG(p.net_salary), 2) AS Monthly,
+                ROUND(12 * AVG(p.net_salary), 2) AS GrossAnnualSalary,
+                e.department AS Department,
+                p.grade AS GradePoint
+            FROM employees e
+            JOIN payroll p ON e.employee_id = p.employee_id
+            GROUP BY e.employee_id
+            ORDER BY e.full_name;
+        `);
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Nominal Roll');
+
+        // 👉 Add title
+        worksheet.mergeCells('A1:H1');
+        worksheet.getCell('A1').value = 'DREAM TECH NOMINAL PAYROLL WORKSHEET';
+        worksheet.getCell('A1').font = { size: 16, bold: true };
+        worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // 👉 Add empty row after title
+        worksheet.addRow([]);
+
+        // 👉 Add headers manually (as a row)
+        const headers = [
+            'No',
+            'Name',
+            'Designation/Position',
+            'Grade Point',
+            'Months',
+            'Monthly',
+            'Gross Annual Salary',
+            'Dept./Unit'
+        ];
+        worksheet.addRow(headers);
+
+        // 👉 Style header row
+        const headerRow = worksheet.getRow(3);
+        headerRow.font = { bold: true };
+        headerRow.alignment = { horizontal: 'center' };
+
+        // 👉 Add employee rows
+        rows.forEach(row => {
+            worksheet.addRow([
+                row.No,
+                row.Name,
+                row.Designation,
+                row.GradePoint,
+                row.Months,
+                `D${row.Monthly.toLocaleString()}`,
+                `D${row.GrossAnnualSalary.toLocaleString()}`,
+                row.Department,
+            ]);
+        });
+
+        // 👉 Totals
+        let totalMonthly = 0;
+        let totalAnnual = 0;
+        rows.forEach(row => {
+            totalMonthly += parseFloat(row.Monthly);
+            totalAnnual += parseFloat(row.GrossAnnualSalary);
+        });
+
+        worksheet.addRow([]); // spacer row
+
+        const totalRow = worksheet.addRow([
+            '', '', '', '', '',
+            `Total Monthly Gross Salary: D${totalMonthly.toLocaleString()}`,
+            `Total Annual Gross Salary: D${totalAnnual.toLocaleString()}`,
+            ''
+        ]);
+
+        // 👉 Merge & style totals row
+        worksheet.mergeCells(`F${totalRow.number}:F${totalRow.number}`);
+        worksheet.mergeCells(`G${totalRow.number}:H${totalRow.number}`);
+        totalRow.font = { bold: true };
+        totalRow.alignment = { vertical: 'middle', horizontal: 'left' };
+
+        // 👉 Set column widths
+        worksheet.columns = [
+            { width: 10 },
+            { width: 30 },
+            { width: 30 },
+            { width: 15 },
+            { width: 10 },
+            { width: 25 },
+            { width: 30 },
+            { width: 20 },
+        ];
+
+        // 👉 Set headers to download the file
+        res.setHeader('Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition',
+            'attachment; filename=NominalRoll.xlsx');
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error("❌ Error exporting Excel:", err.message);
+        res.status(500).json({ error: "Failed to export Excel file" });
+    }
+};
+export const NominalRoll= async (req, res) => {
+    const [rows] = await db.query(`
+      SELECT 
+          e.employee_id AS No,
+          e.full_name AS Name,
+          e.position AS Designation,
+          12 AS Months,
+          ROUND(AVG(p.net_salary), 2) AS Monthly,
+          ROUND(12 * AVG(p.net_salary), 2) AS GrossAnnualSalary,
+          e.department AS Department,
+          p.grade AS GradePoint
+      FROM employees e
+      JOIN payroll p ON e.employee_id = p.employee_id
+      GROUP BY e.employee_id
+      ORDER BY e.full_name;
+    `);
+    res.json(rows);
+ };
+  
