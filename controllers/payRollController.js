@@ -11,9 +11,13 @@ export const createPayRoll = async (req, res) => {
         income_tax, 
         social_security_contribution 
     } = req.body;
-    
+
     // Helper to sanitize decimal inputs
-    const toDecimal = (val) => (val === '' || val === undefined || val === null ? 0 : parseFloat(val));
+    const toDecimal = (val) => {
+        if (val === '' || val === undefined || val === null) return 0;
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : parsed;
+    };
 
     try {
         // Check if employee exists
@@ -47,18 +51,21 @@ export const createPayRoll = async (req, res) => {
         const tax = toDecimal(income_tax);
         const social = toDecimal(social_security_contribution);
 
+        // Optional debug logging
+        console.log("🔍 Final sanitized values:", {
+            employee_id, grade, basic, resident, responsibility, transport, tax, social
+        });
+
         // Insert payroll
         const sql = `INSERT INTO payroll (
             employee_id, grade, basic_salary, resident_allowance, responsibility_allowance, 
             transport_allowance, income_tax, social_security_contribution, 
             salary_date
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())`;
-        
+
         const [result] = await db.query(sql, [
-            employee_id, grade, basic_salary, resident_allowance, responsibility_allowance,
-            transport_allowance, income_tax, social_security_contribution
+            employee_id, grade, basic, resident, responsibility, transport, tax, social
         ]);
-        
 
         const net_salary = basic + resident + responsibility + transport - (tax + social);
 
@@ -73,6 +80,7 @@ export const createPayRoll = async (req, res) => {
         res.status(500).json({ error: "Server error", err });
     }
 };
+
 
 
 export const getEmployeeSalary = async (req, res) => {
