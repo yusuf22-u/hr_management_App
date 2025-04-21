@@ -1,6 +1,6 @@
 import db from '../config/db.js';
 
-export const createStaffEvaluationTable = () => {
+export const createStaffEvaluationTable =async () => {
     const sql = `
     CREATE TABLE IF NOT EXISTS staff_evaluation (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -26,9 +26,10 @@ export const createStaffEvaluationTable = () => {
 );
 
     `;
-
-    db.query(sql, (err, result) => {
-        if (err) throw err;
-        console.log('Staff Evaluation table created or already exists');
-    });
+    try {
+        await db.query(sql);
+        console.log('✅ staff_evaluation table created or already exists');
+      } catch (err) {
+        console.error('❌ Error creating staff_evaluation table:', err.message);
+      }
 };
