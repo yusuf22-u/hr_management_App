@@ -78,6 +78,7 @@ app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form
 // // drop tables
 (async () => {
     await dropTables(); // Safely drops the tables
+    createStockTable()
 // //     // createEmployeeTable();
 // //     createUserTable();
 
@@ -95,8 +96,8 @@ app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form
 // createStaffEvaluationTable();
 // createStudentTable(); // Uncomment if needed
 // createStudentScoresTable()
-createItemsTable()
-createStockTable()
+// createItemsTable()
+// createStockTable()
 // createitem_allocationsTable()
 // createLeaveTable();
 // createPayrollTable()
