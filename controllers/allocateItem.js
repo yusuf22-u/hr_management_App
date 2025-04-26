@@ -1,83 +1,113 @@
-import db from "../config/db.js"
+import db from "../config/db.js";
+import logger from "../utils/logger.js";
+export const createAllocation = async (req, res) => {
+    const { item_number, staff_id, quantity } = req.body;
 
+    logger.info(`Received allocation request: item_number=${item_number}, staff_id=${staff_id}, quantity=${quantity}`);
 
-
-export const createAllocation = (req, res) => {
-    const sql = `SELECT id FROM items WHERE id=?`;
-    const checkStaff_id = `SELECT employee_id FROM employees WHERE employee_id=?`;
-    const InsertQuery = `INSERT INTO item_allocations (item_id, staff_id, quantity) VALUES (?, ?, ?)`;
-    const { item_id, staff_id, quantity } = req.body;
-
-    // Check if the item exists
-    db.query(sql, [item_id], (err, itemResults) => {
-        if (err) {
-            return res.status(500).json({ error: 'server error', err });
-        }
+    try {
+        // Get item_id using item_number
+        const [itemResults] = await db.query(`SELECT id FROM items WHERE item_number = ?`, [item_number]);
         if (itemResults.length === 0) {
-            return res.status(404).json({ error: 'item not found' });
+            logger.warn(`Item not found with number: ${item_number}`);
+            return res.status(404).json({ error: 'Item not found' });
+        }
+        const item_id = itemResults[0].id;
+
+        // Validate staff_id
+        const [staffResults] = await db.query(`SELECT employee_id FROM employees WHERE employee_id=?`, [staff_id]);
+        if (staffResults.length === 0) {
+            logger.warn(`Employee not found with ID: ${staff_id}`);
+            return res.status(404).json({ error: 'Employee not found' });
         }
 
-        // Check if the staff exists
-        db.query(checkStaff_id, [staff_id], (err, staffResults) => {
-            if (err) {
-                return res.status(500).json({ error: 'server error', err });
-            }
-            if (staffResults.length === 0) {
-                return res.status(404).json({ error: 'employee not found' });
-            }
+        // Insert allocation
+        const [insertResults] = await db.query(
+            `INSERT INTO item_allocations (item_id, staff_id, quantity) VALUES (?, ?, ?)`,
+            [item_id, staff_id, quantity]
+        );
 
-            // Insert allocation if both checks pass
-            db.query(InsertQuery, [item_id, staff_id, quantity], (err, insertResults) => {
-                if (err) {
-                    return res.status(500).json({ error: 'server error', err });
-                }
-                return res.status(200).json({ message: "Item successfully allocated", data: insertResults });
-            });
-        });
-    });
+        logger.info(`Item allocated: item_id=${item_id}, staff_id=${staff_id}, quantity=${quantity}`);
+        return res.status(200).json({ message: "Item successfully allocated", data: insertResults });
+    } catch (err) {
+        logger.error(`Error in createAllocation: ${err.message}`);
+        return res.status(500).json({ error: 'Server error', err });
+    }
 };
-export const getAssignItem = (req, res) => {
-    const sql = `SELECT employees.full_name AS employee_name, employees.department,
-    items.name,item_allocations.id,item_allocations.quantity, item_allocations.is_returned,item_allocations.returned_at,item_allocations.allocated_at
-    FROM item_allocations JOIN   employees ON item_allocations.staff_id = employees.employee_id
-    JOIN  items ON item_allocations.item_id = items.id`
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ error: "server error", err })
-        return res.status(200).json({ data: results })
-    })
-}
-export const deleteAllocation = (req, res) => {
-    const { id } = req.params;
-    const sql = `DELETE FROM item_allocations WHERE id=?`;
 
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: 'server error', err });
-        }
-        // Check if any rows were affected (to handle the case when the ID does not exist)
+
+// Get Assigned Items
+export const getAssignItem = async (req, res) => {
+    try {
+        const [results] = await db.query(`
+            SELECT 
+                employees.full_name AS employee_name, 
+                employees.department,
+                items.name,
+                 items.item_number,  
+                item_allocations.id,
+                
+                item_allocations.quantity, 
+                item_allocations.is_returned, 
+                item_allocations.returned_at, 
+                item_allocations.allocated_at
+            FROM item_allocations 
+            JOIN employees ON item_allocations.staff_id = employees.employee_id
+            JOIN items ON item_allocations.item_id = items.id
+        `);
+
+        logger.info("Fetched all item allocations");
+        return res.status(200).json({ data: results });
+    } catch (err) {
+        logger.error(`Error in getAssignItem: ${err.message}`);
+        return res.status(500).json({ error: "Server error", err });
+    }
+};
+
+// Delete Allocation
+export const deleteAllocation = async (req, res) => {
+    const { id } = req.params;
+    logger.info(`Attempting to delete allocation with ID: ${id}`);
+
+    try {
+        const [result] = await db.query(`DELETE FROM item_allocations WHERE id=?`, [id]);
+
         if (result.affectedRows === 0) {
+            logger.warn(`Allocation not found for deletion with ID: ${id}`);
             return res.status(404).json({ error: 'Allocation not found' });
         }
-        res.status(200).json({ message: 'Allocation deleted successfully', allocationId: id });
-    });
-}
-export const updateReturn = (req, res) => {
+
+        logger.info(`Allocation deleted with ID: ${id}`);
+        return res.status(200).json({ message: 'Allocation deleted successfully', allocationId: id });
+    } catch (err) {
+        logger.error(`Error in deleteAllocation: ${err.message}`);
+        return res.status(500).json({ error: 'Server error', err });
+    }
+};
+
+// Update Return
+export const updateReturn = async (req, res) => {
     const { id } = req.params;
     const currentTime = new Date();
+    const isReturned = true;
 
-    // Update the returned_at column and is_returned flag in your database
-    const sql = 'UPDATE item_allocations SET returned_at = ?, is_returned = ? WHERE id = ?';
-    const isReturned = true; // Set this to true when the item is returned
+    logger.info(`Marking allocation ID ${id} as returned`);
 
-    db.query(sql, [currentTime, isReturned, id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: 'server error', err });
-        }
-        // Check if any rows were affected
+    try {
+        const [result] = await db.query(
+            'UPDATE item_allocations SET returned_at = ?, is_returned = ? WHERE id = ?',
+            [currentTime, isReturned, id]
+        );
+
         if (result.affectedRows === 0) {
+            logger.warn(`Allocation not found for return update with ID: ${id}`);
             return res.status(404).json({ error: 'Allocation not found' });
         }
-        res.status(200).json({ message: 'Item returned successfully', allocationId: id });
-    });
-}
 
+        logger.info(`Item marked as returned for allocation ID: ${id}`);
+        return res.status(200).json({ message: 'Item returned successfully', allocationId: id });
+    } catch (err) {
+        logger.error(`Error in updateReturn: ${err.message}`);
+        return res.status(500).json({ error: 'Server error', err });
+    }
+};

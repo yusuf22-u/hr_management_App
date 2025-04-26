@@ -1,0 +1,66 @@
+[2025-04-25T10:38:14.613Z] INFO: Fetched all item allocations
+[2025-04-25T10:38:14.617Z] INFO: Fetched all item allocations
+[2025-04-25T10:39:31.148Z] INFO: Received allocation request: item_id=2, staff_id=22316090, quantity=2
+[2025-04-25T10:39:31.358Z] INFO: Item allocated: item_id=2, staff_id=22316090, quantity=2
+[2025-04-25T10:39:34.065Z] INFO: Fetched all item allocations
+[2025-04-25T10:39:34.070Z] INFO: Fetched all item allocations
+[2025-04-25T10:44:41.313Z] INFO: Fetched all item allocations
+[2025-04-25T10:54:32.374Z] INFO: Received allocation request: item_number=12/2012/admi, staff_id=22316091, quantity=2
+[2025-04-25T10:54:32.378Z] WARN: Item not found with number: 12/2012/admi
+[2025-04-25T10:54:39.541Z] INFO: Received allocation request: item_number=12/2012/admin, staff_id=223160910, quantity=2
+[2025-04-25T10:54:39.545Z] WARN: Employee not found with ID: 223160910
+[2025-04-25T10:54:45.306Z] INFO: Received allocation request: item_number=12/2012/admin, staff_id=22316091, quantity=2
+[2025-04-25T10:54:45.450Z] INFO: Item allocated: item_id=1, staff_id=22316091, quantity=2
+[2025-04-25T10:54:54.463Z] INFO: Fetched all item allocations
+[2025-04-25T10:54:54.465Z] INFO: Fetched all item allocations
+[2025-04-25T11:01:41.006Z] ERROR: Error in getAssignItem: Unknown column 'item_allocations.item_number' in 'field list'
+[2025-04-25T11:02:29.952Z] ERROR: Error in getAssignItem: Unknown column 'item.item_number' in 'field list'
+[2025-04-25T11:02:29.986Z] ERROR: Error in getAssignItem: Unknown column 'item.item_number' in 'field list'
+[2025-04-25T11:02:35.898Z] ERROR: Error in getAssignItem: Unknown column 'item.item_number' in 'field list'
+[2025-04-25T11:02:35.912Z] ERROR: Error in getAssignItem: Unknown column 'item.item_number' in 'field list'
+[2025-04-25T11:03:02.816Z] INFO: Fetched all item allocations
+[2025-04-25T11:03:02.833Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:05.485Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:09.459Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:09.482Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:51.611Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:51.619Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:54.173Z] INFO: Attempting to delete allocation with ID: 4
+[2025-04-25T11:38:54.253Z] INFO: Allocation deleted with ID: 4
+[2025-04-25T11:38:58.262Z] INFO: Fetched all item allocations
+[2025-04-25T11:38:58.271Z] INFO: Fetched all item allocations
+[2025-04-25T11:39:47.369Z] INFO: Fetched all item allocations
+[2025-04-25T11:39:51.056Z] INFO: Marking allocation ID 5 as returned
+[2025-04-25T11:39:51.155Z] INFO: Item marked as returned for allocation ID: 5
+[2025-04-25T11:51:28.938Z] INFO: Fetched all item allocations
+[2025-04-25T11:51:28.942Z] INFO: Fetched all item allocations
+[2025-04-25T11:53:58.293Z] INFO: Received allocation request: item_number=12/2012/chair, staff_id=22316091, quantity=2
+[2025-04-25T11:53:58.415Z] INFO: Item allocated: item_id=2, staff_id=22316091, quantity=2
+[2025-04-25T11:54:09.907Z] INFO: Fetched all item allocations
+[2025-04-25T11:54:09.912Z] INFO: Fetched all item allocations
+[2025-04-25T12:41:58.418Z] INFO: Fetched all item allocations
+[2025-04-25T12:41:58.426Z] INFO: Fetched all item allocations
+[2025-04-25T12:42:55.936Z] INFO: Received allocation request: item_number=12/2012/chair, staff_id=22316091, quantity=2
+[2025-04-25T12:42:56.086Z] INFO: Item allocated: item_id=2, staff_id=22316091, quantity=2
+[2025-04-25T12:42:58.362Z] INFO: Fetched all item allocations
+[2025-04-25T12:42:58.364Z] INFO: Fetched all item allocations
+[2025-04-26T14:44:42.968Z] INFO: Fetched all item allocations
+[2025-04-26T14:44:42.973Z] INFO: Fetched all item allocations
+[2025-04-26T14:45:07.909Z] INFO: Received allocation request: item_number=12/2012/deskto, staff_id=22316090, quantity=2
+[2025-04-26T14:45:07.911Z] WARN: Item not found with number: 12/2012/deskto
+[2025-04-26T14:45:11.454Z] INFO: Received allocation request: item_number=12/2012/desktop, staff_id=22316090, quantity=2
+[2025-04-26T14:45:11.587Z] INFO: Item allocated: item_id=5, staff_id=22316090, quantity=2
+[2025-04-26T14:45:21.139Z] INFO: Fetched all item allocations
+[2025-04-26T14:45:21.143Z] INFO: Fetched all item allocations
+[2025-04-26T14:45:24.422Z] INFO: Fetched all item allocations
+[2025-04-26T14:45:24.447Z] INFO: Fetched all item allocations
+[2025-04-26T14:45:57.818Z] INFO: Marking allocation ID 8 as returned
+[2025-04-26T14:45:57.880Z] INFO: Item marked as returned for allocation ID: 8
+[2025-04-26T14:46:43.215Z] INFO: Fetched all item allocations
+[2025-04-26T14:46:43.220Z] INFO: Fetched all item allocations
+[2025-04-26T14:48:00.998Z] INFO: Received allocation request: item_number=12/2012/phone, staff_id=22316091, quantity=1
+[2025-04-26T14:48:01.100Z] INFO: Item allocated: item_id=3, staff_id=22316091, quantity=1
+[2025-04-26T14:48:01.180Z] INFO: Fetched all item allocations
+[2025-04-26T14:48:01.182Z] INFO: Fetched all item allocations
+[2025-04-26T14:51:15.690Z] INFO: Fetched all item allocations
+[2025-04-26T14:51:15.695Z] INFO: Fetched all item allocations

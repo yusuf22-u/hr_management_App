@@ -38,12 +38,16 @@ import { createEmailTable } from './models/EmailModel.js';
 import { createCenterFormTable } from './models/centerForm.js';
 import { centerformRouter } from './routers/centerForm.js';
 import { dropTables } from './utils/resetTables.js';
+import dotenv from 'dotenv';
+dotenv.config();
+
+
 
 const app = express();
 const server = http.createServer(app); // Create HTTP server
 const io = new Server(server, {
     cors: {
-        origin: 'https://hr-management-sys-app.netlify.app', // Allow this origin
+        origin: `https://hr-management-sys-app.netlify.app`, // Allow this origin
        
         methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
         credentials: true // Allow credentials (cookies, authorization headers)
@@ -74,14 +78,14 @@ app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form
 // // drop tables
 (async () => {
     await dropTables(); // Safely drops the tables
-//     // createEmployeeTable();
-//     createUserTable();
+// //     // createEmployeeTable();
+// //     createUserTable();
 
-//     createLeaveTable();
-//     createnotificationsTable();
-    createPayrollTable();
-//     createMessageTable();
-//     createCertificatesTable();
+// //     createLeaveTable();
+// //     createnotificationsTable();
+//     createPayrollTable();
+// //     createMessageTable();
+// //     createCertificatesTable();
   })();
 
 
@@ -91,11 +95,11 @@ app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form
 // createStaffEvaluationTable();
 // createStudentTable(); // Uncomment if needed
 // createStudentScoresTable()
-// createItemsTable()
-// createStockTable()
+createItemsTable()
+createStockTable()
 // createitem_allocationsTable()
 // createLeaveTable();
-createPayrollTable()
+// createPayrollTable()
 // createMessageTable()
 // createCertificatesTable()
 // createEmailTable()

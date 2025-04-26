@@ -6,7 +6,7 @@ export const dropTables = async () => {
     await db.query('SET FOREIGN_KEY_CHECKS = 0');
 
     // Drop child tables first, then parent tables
-    await db.query(`DROP TABLE IF EXISTS payroll`);
+    await db.query(`DROP TABLE IF EXISTS stock_transactions`);
     // await db.query(`DROP TABLE IF EXISTS message`);
     // await db.query(`DROP TABLE IF EXISTS notifications`);
   

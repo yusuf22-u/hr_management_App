@@ -1,118 +1,157 @@
 import db from "../config/db.js";
+export const createStock = async (req, res) => {
+    const { item_number, transactions_type, quantity } = req.body;
 
-export const createStock = (req, res) => {
-    const { item_id, transactions_type, quantity } = req.body
-    //check if item_id exit
-    const insertQuery = `INSERT INTO stock_transactions( item_id, transactions_type, quantity) VALUES(?,?,?)`
-    const sql = `SELECT id FROM items WHERE id=?`
+    try {
+        // Step 1: Check if item exists in items table
+        const [itemResult] = await db.query(
+            'SELECT item_number FROM items WHERE item_number = ?',
+            [item_number]
+        );
 
-    db.query(sql, [item_id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: "server Error", err })
+        if (itemResult.length === 0) {
+            return res.status(404).json({ error: "Item not found" });
         }
-        if (result.length == 0) {
-            return res.status(404).json({ error: "item not found" })
+
+        // Step 2: Check if item already exists in stock_transactions
+        const [stockResult] = await db.query(
+            'SELECT item_number FROM stock_transactions WHERE item_number = ?',
+            [item_number]
+        );
+
+        if (stockResult.length > 0) {
+            return res.status(400).json({ error: "Item with same number already exists in stock." });
         }
 
-        db.query(insertQuery, [item_id, transactions_type, quantity], (err, result) => {
-            if (err) {
-                return res.status(500).json({ error: "server Error", err })
-            }
-            return res.status(200).json({ message: "New stock succefully created" })
-        })
-    })
+        // Step 3: Insert new stock
+        await db.query(
+            'INSERT INTO stock_transactions (item_number, transactions_type, quantity) VALUES (?, ?, ?)',
+            [item_number, transactions_type, quantity]
+        );
 
-}
-export const getAllTheStock = (req, res) => {
-    const sql = `
-        SELECT 
-            items.name AS item_name, 
-            items.image_url AS item_image_url, 
-            stock_transactions.id, 
-            stock_transactions.transactions_type, 
-            stock_transactions.quantity, 
-            stock_transactions.date 
-        FROM stock_transactions
-        JOIN items ON stock_transactions.item_id = items.id
-    `;
-    const stock_in = 'SELECT COUNT(*) AS totalStock_In FROM stock_transactions WHERE  transactions_type="stock-in"';
-    const stock_out = 'SELECT COUNT(*) AS totalStock_Out FROM stock_transactions WHERE  transactions_type="stock-out"';
-    db.query(stock_out, (err, stock_inResult) => {
-        if (err) {
-            return res.status(500).json({ error: 'Database query error: ' + err });
-        }
-        const totalStock_Out = stock_inResult[0].totalStock_Out;
-        db.query(stock_in, (err, stock_inResult) => {
-            if (err) {
-                return res.status(500).json({ error: 'Database query error: ' + err });
-            }
-            const totalStock_In = stock_inResult[0].totalStock_In;
-
-
-            db.query(sql, (err, result) => {
-                if (err) return res.status(500).json({ error: "server error", err });
-                return res.status(200).json({
-                    result,
-                    totalStock_In,
-                    totalStock_Out
-                });
-            });
-        })
-    })
+        return res.status(200).json({ message: "New stock successfully created" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Server error", details: error });
+    }
 };
 
-export const getSingleStock = (req, res) => {
-    const { id } = req.params
+export const getAllTheStock = async (req, res) => {
+    try {
+        // Get total stock out
+        const [stockOutResult] = await db.query(
+            'SELECT COUNT(*) AS totalStock_Out FROM stock_transactions WHERE transactions_type = "stock-out"'
+        );
+        const totalStock_Out = stockOutResult[0].totalStock_Out;
 
-    const sql = `
-        SELECT st.*, i.name AS item_name, i.image_url AS item_pic,i.description
-        FROM stock_transactions st
-        JOIN items i ON st.item_id = i.id
-        WHERE st.id = ?
-    `;
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: "server error", err });
-        }
-        if (result.length == 0) {
-            return res.status(404).json({ error: "stock not found" });
-        }
-        return res.status(200).json(result[0]);
-    })
-}
-export const deleteStock = (req, res) => {
-    const { id } = req.params
-    const sql = `DELETE FROM  stock_transactions WHERE id=?`
-    db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).json({ error: "server error", err });
-        return res.status(200).json({ message: "stock deleted successfully" });
-    })
-}
-export const updateStock = (req, res) => {
-    const { id } = req.params;
-    const { item_id, transactions_type, quantity } = req.body;
+        // Get total stock in
+        const [stockInResult] = await db.query(
+            'SELECT COUNT(*) AS totalStock_In FROM stock_transactions WHERE transactions_type = "stock-in"'
+        );
+        const totalStock_In = stockInResult[0].totalStock_In;
 
-    const Checkitem_id = 'SELECT id FROM items WHERE id=?'
-    const sql = `UPDATE stock_transactions SET item_id = ?, transactions_type = ?, quantity = ? WHERE id = ?`;
-    db.query(Checkitem_id, [item_id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ error: "server Error", err })
-        }
-        if (result.length == 0) {
-            return res.status(404).json({ error: "item not found" })
-        }
-        db.query(sql, [item_id, transactions_type, quantity, id], (err, result) => {
-            if (err) {
-                console.error('Database update error:', err);
-                return res.status(500).json({ error: "Server error", err });
-            }
+        // Get all stock details
+        const [stocks] = await db.query(`
+            SELECT 
+                items.name AS item_name, 
+                items.image_url AS item_image_url, 
+                stock_transactions.id, 
+                stock_transactions.transactions_type, 
+                stock_transactions.quantity, 
+                stock_transactions.date,
+                stock_transactions.item_number 
+            FROM stock_transactions
+            JOIN items ON stock_transactions.item_number = items.item_number
+        `);
 
-            // Check if any rows were affected
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ error: "Stock not found" });
-            }
-
-            return res.status(200).json({ message: "Update is successful", result });
+        return res.status(200).json({
+            result: stocks,
+            totalStock_In,
+            totalStock_Out
         });
-    })
+    } catch (error) {
+        return res.status(500).json({ error: "Server error", details: error });
+    }
+};
+export const getSingleStock = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [stock] = await db.query(
+            `SELECT 
+                items.name AS item_name,
+                items.description, 
+                items.image_url AS item_image_url, 
+                stock_transactions.id, 
+                stock_transactions.transactions_type, 
+                stock_transactions.quantity, 
+                stock_transactions.date,
+                stock_transactions.item_number 
+            FROM stock_transactions
+            JOIN items ON stock_transactions.item_number = items.item_number`,
+            [id]
+        );
+
+        if (stock.length === 0) {
+            return res.status(404).json({ error: "Stock item not found" });
+        }
+
+        return res.status(200).json(stock[0]);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Server error", details: error });
+    }
+};
+
+export const deleteStock = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [stockResult] = await db.query(
+            'SELECT * FROM stock_transactions WHERE id = ?',
+            [id]
+        );
+
+        if (stockResult.length === 0) {
+            return res.status(404).json({ error: "Stock item not found" });
+        }
+
+        await db.query(
+            'DELETE FROM stock_transactions WHERE id = ?',
+            [id]
+        );
+
+        return res.status(200).json({ message: "Stock item deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Server error", details: error });
+    }
+};
+
+export const updateStock = async (req, res) => {
+    const { id } = req.params;
+    const { transactions_type, quantity } = req.body;
+
+    try {
+        // Check if stock item exists
+        const [stockResult] = await db.query(
+            'SELECT * FROM stock_transactions WHERE id = ?',
+            [id]
+        );
+
+        if (stockResult.length === 0) {
+            return res.status(404).json({ error: "Stock item not found" });
+        }
+
+        // Update stock
+        await db.query(
+            'UPDATE stock_transactions SET transactions_type = ?, quantity = ? WHERE id = ?',
+            [transactions_type, quantity, id]
+        );
+
+        return res.status(200).json({ message: "Stock item updated successfully" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Server error", details: error });
+    }
 };
