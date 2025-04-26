@@ -98,7 +98,7 @@ app.use(express.urlencoded({ extended: true })); // For parsing URL-encoded form
 // createStudentScoresTable()
 // createItemsTable()
 // createStockTable()
-// createitem_allocationsTable()
+createitem_allocationsTable()
 // createLeaveTable();
 // createPayrollTable()
 // createMessageTable()
